@@ -16,50 +16,24 @@
 // Inicializa el constructor con parámetros del LCD
 DisplayDevice::DisplayDevice(const std::string& name, int cols, int rows, int address)
     : lcd(address, cols, rows) {
-    lcd.init();        // Inicializa el LCD
-    lcd.backlight();   // Enciende la luz de fondo
 }
 
 // Manejo de eventos
 void DisplayDevice::on(Event event) {
-    if (event.id == 1) {
-        Serial.print("Display event received: ");
-        Serial.println(event.id);
-    } else {
-        Serial.print("Unhandled display event: ");
-        Serial.println(event.id);
-    }
 }
 
 // Manejo de comandos
 void DisplayDevice::handle(Command command) {
-    if (command.id == 1) {
-        Serial.print("Display command received: ");
-        Serial.println(command.id);
-    } else {
-        Serial.print("Unhandled display command: ");
-        Serial.println(command.id);
-    }
 }
 
 // Mostrar mensaje
 void DisplayDevice::displayMessage(const std::string& message) {
-    Serial.print("Displaying message: ");
-    Serial.println(message.c_str());
-    lcd.print(message.c_str());
 }
 
 // Limpiar pantalla
 void DisplayDevice::clearDisplay() {
-    Serial.println("Clearing display");
-    lcd.clear();
 }
 
 // Posicionar cursor
 void DisplayDevice::setCursor(int col, int row) {
-    Serial.print("Setting cursor to column ");
-    Serial.print(col);
-    Serial.print(", row ");
-    Serial.println(row);
-    lcd.setCursor(col, row);
 }

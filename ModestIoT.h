@@ -8,7 +8,7 @@
  * This header file serves as a central point for including all the necessary components of the Modest IoT framework.
  * It includes the definitions for events, commands, devices, and actuators, allowing users to easily access the core functionalities of the framework.
  * 
- * @author Fabia Herrera
+ * @author Pelusit
  * @date June 14, 2025
  * @version 1.0
  * 
