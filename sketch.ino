@@ -19,7 +19,7 @@
 #include "ModestIoT.h"
 #include "ThermostatDevice.h"
 
-#define DEBOUNCE_DELAY_MS 30000 // 10 seconds debounce delay for HTTP request
+#define DEBOUNCE_DELAY_MS 8000 // 10 seconds debounce delay for HTTP request
 #define LCD_UPDATE_INTERVAL_MS 1000 // 1 second update interval for LCD display
 
 #define ENDPOINT_POST_TEMPERATURE "http://host.wokwi.internal:3000/api/v1/monitoring/thermostats"
@@ -78,11 +78,18 @@ void setup() {
 }
 
 void loop() {
+    delay(DEBOUNCE_DELAY_MS);
+
  if(WiFi.status() == WL_CONNECTED) {
     // call the handleReadyEvent function to simulate the device being ready
     
     std::pair<bool, int> response = handleReadyEvent();
-    if(!response.first) return;
+    if(!response.first) {
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Device off");
+      return;
+    }
 
     thermostat.setCurrentTemperature(response.second);
 
@@ -91,7 +98,7 @@ void loop() {
 
     lcd.clear();
     lcd.setCursor(0,0);
-    lcd.print("Temperature = ");
+    lcd.print("Temp = ");
     lcd.print(thermostat.getCurrentTemperature());
     lcd.print("C");    
   }else {
@@ -99,7 +106,6 @@ void loop() {
     lcd.clear();
   }
 
-  delay(DEBOUNCE_DELAY_MS);
 }
 
 // function to know if the device is ready
@@ -110,15 +116,22 @@ std::pair<bool, int> handleReadyEvent() {
 
   String dataRecordResource;
   serializeJson(dataRecord, dataRecordResource);
+  Serial.print("Sending JSON: ");
+  Serial.println(dataRecordResource);
 
   httpClient.addHeader(CONTENT_TYPE_HEADER, APPLICATION_JSON);
-  httpClient.POST(dataRecordResource);
+  int httpCode = httpClient.POST(dataRecordResource);
+  Serial.print("HTTP Response Code: ");
+  Serial.println(httpCode);
 
   JsonDocument response;
   String responseResource;
   responseResource = httpClient.getString();
+  Serial.print("Raw response: ");
+  Serial.println(responseResource);
   deserializeJson(response, responseResource);
   serializeJsonPretty(response, Serial);
+  Serial.println();
 
   std::pair<bool, int> varResponse;
   varResponse.first = response["state"].as<bool>();
