@@ -21,17 +21,20 @@
 
 #define DEBOUNCE_DELAY_MS 30000 // 10 seconds debounce delay for HTTP request
 #define LCD_UPDATE_INTERVAL_MS 1000 // 1 second update interval for LCD display
-#define ENDPOINT_GET_THERMOSTAT_READY "https://sweet-manager.free.beeceptor.com/api/v1/monitoring/thermostats?ip_address=192.168.1.5"
-#define ENDPOINT_GET_TEMPERATURE_GUEST "https://sweet-manager.free.beeceptor.com/api/v1/monitoring/temperature?ip_address=192.168.1.5"
+
+#define ENDPOINT_POST_TEMPERATURE "http://host.wokwi.internal:3000/api/v1/monitoring/thermostats"
 
 #define WIFI_SSID "Wokwi-GUEST"
 #define WIFI_PASSWORD ""
 
+#define DEVICE_ID "TH-01"
+#define API_KEY "thermostat-key"
+
 ThermostatDevice thermostat("Living Room Thermostat", 22); 
-DisplayDevice display("Thermostat Display", 16, 2); 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 HTTPClient httpClient;
+JsonDocument dataRecord;
 
 #define CONTENT_TYPE_HEADER "Content-Type"
 #define APPLICATION_JSON "application/json"
@@ -42,8 +45,7 @@ HTTPClient httpClient;
 #define TEMPERATURE_DEFAULT 22
 
 // signings for the methods
-bool handleReadyEvent();
-int currentTemperatureFromGuestPreference();
+std::pair<bool, int> handleReadyEvent();
 
 void setup() {
   Serial.begin(115200);
@@ -65,10 +67,11 @@ void setup() {
   Serial.println("Connected: ");
   Serial.println(WiFi.localIP());
 
+  dataRecord["device_id"] = DEVICE_ID;
+  dataRecord["api_key"] = API_KEY;
+
   thermostat.setCurrentTemperature(TEMPERATURE_DEFAULT);
   thermostat.setTargetTemperature(TEMPERATURE_DEFAULT + 2);
-
-  //Simulate an event to indicate the device is ready
 
   Event readyEvent(EVENT_ID_READY);
   thermostat.on(readyEvent);
@@ -77,116 +80,51 @@ void setup() {
 void loop() {
  if(WiFi.status() == WL_CONNECTED) {
     // call the handleReadyEvent function to simulate the device being ready
-    if(handleReadyEvent()) {
-        Serial.println("Device is ready, recovering the temperature data...");
-
-        // Simulate getting the current temperature from the server
-        int data = currentTemperatureFromGuestPreference();
-        if (data >= 0) {
-            thermostat.setCurrentTemperature(data); // Set the current temperature from the server data
-            // Update the display with the current temperature
-
-            lcd.clear();
-            lcd.setCursor(0, 0);
-            lcd.print("Temperature= ");
-            lcd.print(data);
-            delay(1000);
-           
-            Serial.print("Current temperature set to: ");
-            Serial.println(thermostat.getCurrentTemperature());
-        } else {
-            Serial.println("Failed to set current temperature from server data.");
-        }
-    }else {
-        Serial.println("Device is not ready, skipping temperature data retrieval.");
-        lcd.clear();
-    }
-
-    delay(DEBOUNCE_DELAY_MS);
     
+    std::pair<bool, int> response = handleReadyEvent();
+    if(!response.first) return;
+
+    thermostat.setCurrentTemperature(response.second);
+
+    Serial.println(response.first);
+    Serial.println(response.second);
+
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Temperature = ");
+    lcd.print(thermostat.getCurrentTemperature());
+    lcd.print("C");    
   }else {
     Serial.println("WiFi disconnected");
     lcd.clear();
   }
+
+  delay(DEBOUNCE_DELAY_MS);
 }
 
 // function to know if the device is ready
-bool handleReadyEvent() {
+std::pair<bool, int> handleReadyEvent() {
   Serial.println("Getting if the device is ready...");
-  bool state = false;
+  httpClient.begin(ENDPOINT_POST_TEMPERATURE);
+  dataRecord["current_temperature"] = thermostat.getCurrentTemperature();
 
-  httpClient.begin(ENDPOINT_GET_THERMOSTAT_READY);
+  String dataRecordResource;
+  serializeJson(dataRecord, dataRecordResource);
+
   httpClient.addHeader(CONTENT_TYPE_HEADER, APPLICATION_JSON);
+  httpClient.POST(dataRecordResource);
 
-  int httpResponseCode = httpClient.GET();
-  Serial.print("Response code: ");
-  Serial.println(httpResponseCode);
+  JsonDocument response;
+  String responseResource;
+  responseResource = httpClient.getString();
+  deserializeJson(response, responseResource);
+  serializeJsonPretty(response, Serial);
 
-  if (httpResponseCode == 200) {
-    String responseResource = httpClient.getString();
-    
-    StaticJsonDocument<256> response; // Usa tamaño adecuado según el JSON
-    DeserializationError error = deserializeJson(response, responseResource);
-
-    if (!error) {
-      serializeJsonPretty(response, Serial); // Ver para depuración
-
-      // Leer "state" directamente del objeto JSON
-      if (response.containsKey("state")) {
-        state = response["state"].as<bool>();
-        Serial.print("Extracted state: ");
-        Serial.println(state ? "true" : "false");
-      } else {
-        Serial.println("Key 'state' not found in JSON.");
-      }
-    } else {
-      Serial.print("deserializeJson() failed: ");
-      Serial.println(error.f_str());
-    }
-  } else {
-    Serial.println("HTTP request failed.");
-  }
-
-  httpClient.end(); // Liberar recursos
-  return state;
-}
-
-
-int currentTemperatureFromGuestPreference() {
-  Serial.println("Getting the current temperature of the guest...");
-  int temperature = TEMPERATURE_DEFAULT;
-
-  httpClient.begin(ENDPOINT_GET_TEMPERATURE_GUEST);
-  httpClient.addHeader(CONTENT_TYPE_HEADER, APPLICATION_JSON);
-
-  int httpResponseCode = httpClient.GET();
-  Serial.print("Response code: ");
-  Serial.println(httpResponseCode);
-
-  if (httpResponseCode == 200) {
-    String responseResource = httpClient.getString();
-
-    StaticJsonDocument<256> response;
-    DeserializationError error = deserializeJson(response, responseResource);
-
-    if (!error) {
-      serializeJsonPretty(response, Serial);
-
-      if (response.containsKey("temperature")) {
-        temperature = response["temperature"].as<int>();
-        Serial.print("Extracted temperature: ");
-        Serial.println(temperature);
-      } else {
-        Serial.println("Key 'temperature' not found.");
-      }
-    } else {
-      Serial.print("deserializeJson() failed: ");
-      Serial.println(error.f_str());
-    }
-  } else {
-    Serial.println("HTTP request failed.");
-  }
+  std::pair<bool, int> varResponse;
+  varResponse.first = response["state"].as<bool>();
+  varResponse.second = response["current_temperature"].as<int>();
 
   httpClient.end();
-  return temperature;
+
+  return varResponse;
 }
