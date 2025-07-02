@@ -3,24 +3,78 @@
   "author": "SweetManager Team IoT",
   "editor": "wokwi",
   "parts": [
-    { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": -24.1, "left": -81.8, "attrs": {} },
+    { "type": "wokwi-breadboard", "id": "bb1", "top": 169.8, "left": 242.8, "attrs": {} },
+    { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": -110.5, "left": 52.6, "attrs": {} },
     {
       "type": "wokwi-lcd1602",
       "id": "lcd2",
-      "top": 16,
-      "left": 168.8,
+      "top": -89.6,
+      "left": 552.8,
       "attrs": { "pins": "i2c" }
+    },
+    { "type": "wokwi-potentiometer", "id": "tempDial", "top": 27.5, "left": 335.8, "attrs": {} },
+    {
+      "type": "wokwi-slide-switch",
+      "id": "powerSwitch",
+      "top": -110.8,
+      "left": 300.7,
+      "attrs": {}
+    },
+    { "type": "wokwi-led", "id": "ledRed", "top": 198, "left": 359, "attrs": { "color": "red" } },
+    {
+      "type": "wokwi-led",
+      "id": "ledBlue",
+      "top": 198,
+      "left": 531.8,
+      "attrs": { "color": "blue" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "rRed",
+      "top": 205.55,
+      "left": 412.8,
+      "attrs": { "value": "1000" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "rBlue",
+      "top": 215.15,
+      "left": 585.6,
+      "attrs": { "value": "1000" }
     }
   ],
   "connections": [
     [ "esp:TX0", "$serialMonitor:RX", "", [] ],
     [ "esp:RX0", "$serialMonitor:TX", "", [] ],
-    [ "lcd2:SDA", "esp:21", "green", [ "h0" ] ],
-    [ "lcd2:SCL", "esp:23", "blue", [ "h0" ] ],
-    [ "lcd2:GND", "esp:GND.2", "black", [ "h0" ] ],
-    [ "lcd2:VCC", "esp:VIN", "red", [ "h0" ] ],
-    [ "lcd2:SDA", "esp:D21", "green", [ "h0" ] ],
-    [ "lcd2:SCL", "esp:D22", "purple", [ "h0" ] ]
+    [ "lcd2:SDA", "esp:21", "green", [] ],
+    [ "lcd2:SCL", "esp:22", "blue", [] ],
+    [ "tempDial:SIG", "esp:34", "green", [] ],
+    [ "powerSwitch:1", "esp:13", "yellow", [] ],
+    [ "esp:15", "rRed:1", "orange", [] ],
+    [ "rRed:2", "ledRed:A", "orange", [ "h8.4", "v28.8" ] ],
+    [ "esp:2", "rBlue:1", "blue", [] ],
+    [ "rBlue:2", "ledBlue:A", "orange", [ "h8.4", "v33.2" ] ],
+    [ "esp:GND.2", "bb1:tn.1", "black", [ "h-38.4", "v57.5", "h249.6", "v96.1" ] ],
+    [ "esp:VIN", "bb1:tp.1", "red", [ "h-19.2", "v67.2", "h250.4" ] ],
+    [ "ledRed:C", "bb1:tn.10", "black", [ "h-18.8", "v-47.7" ] ],
+    [ "ledBlue:C", "bb1:tn.22", "black", [ "h-28.4", "v-47.9" ] ],
+    [ "lcd2:VCC", "bb1:tp.16", "red", [ "h0" ] ],
+    [ "powerSwitch:1", "bb1:tn.4", "black", [ "v0" ] ],
+    [ "powerSwitch:2", "esp:D34", "green", [ "v19.2", "h38.5", "v-86.4", "h-336", "v86.6" ] ],
+    [ "tempDial:GND", "bb1:tn.6", "black", [ "v9.6", "h-19.2", "v86.5" ] ],
+    [ "tempDial:VCC", "bb1:tp.8", "red", [ "v19.2", "h-20", "v66.9" ] ],
+    [ "tempDial:SIG", "esp:D35", "green", [ "v38.4", "h57.2", "v-288", "h-422.4", "v106" ] ],
+    [ "ledRed:A", "bb1:13t.c", "", [ "$bb" ] ],
+    [ "ledRed:C", "bb1:12t.c", "", [ "$bb" ] ],
+    [ "ledBlue:A", "bb1:31t.c", "", [ "$bb" ] ],
+    [ "ledBlue:C", "bb1:30t.c", "", [ "$bb" ] ],
+    [ "rBlue:1", "bb1:34t.a", "", [ "$bb" ] ],
+    [ "rBlue:2", "bb1:40t.a", "", [ "$bb" ] ],
+    [ "lcd2:GND", "bb1:tn.16", "black", [ "h-86.4", "v259.3" ] ],
+    [ "lcd2:SDA", "esp:D25", "blue", [ "v0.2", "h-38.4", "v-76.8", "h-480", "v96" ] ],
+    [ "lcd2:SCL", "esp:D26", "purple", [ "v0.3", "h-57.6", "v-105.6", "h-470.4", "v124.9" ] ],
+    [ "esp:D14", "rRed:1", "gold", [ "h-48", "v144.1", "h403.2" ] ],
+    [ "rBlue:1", "esp:D12", "gold", [ "v-76.8", "h-585.6", "v-124.1" ] ]
   ],
   "dependencies": {}
 }

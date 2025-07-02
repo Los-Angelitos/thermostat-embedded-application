@@ -1,26 +1,13 @@
-/**
- * @file sketch.ino
- * @brief This is the main sketch file for the Modest IoT framework, demonstrating the use of the ThermostatDevice class.
- * * This sketch initializes a ThermostatDevice and simulates temperature events and commands.
- * * The sketch includes the necessary headers for the Modest IoT framework and sets up the device to handle temperature events and commands.
- * 
- * * Usage:
- * * To run this sketch, upload it to an Arduino board with the Modest IoT framework installed.
- * * * The sketch will initialize a ThermostatDevice and simulate temperature events and commands, printing the results to the Serial Monitor.
- * 
- * @author Arian Rodriguez
- * @date June 13, 2025
- * @version 1.0
- */
-
+#include <LiquidCrystal_I2C.h>
+#include <Wire.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-#include "ModestIoT.h"
-#include "ThermostatDevice.h"
 
-#define DEBOUNCE_DELAY_MS 8000 // 10 seconds debounce delay for HTTP request
-#define LCD_UPDATE_INTERVAL_MS 1000 // 1 second update interval for LCD display
+#define SWITCH_GPIO 34
+#define POTENTIOMETER_PIN 35
+#define RED_LED 14
+#define BLUE_LED 12
 
 #define ENDPOINT_POST_TEMPERATURE "http://host.wokwi.internal:3000/api/v1/monitoring/thermostats"
 
@@ -30,59 +17,114 @@
 #define DEVICE_ID "TH-01"
 #define API_KEY "thermostat-key"
 
-ThermostatDevice thermostat("Living Room Thermostat", 22); 
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+#define CONTENT_TYPE_HEADER "Content-Type"
+#define APPLICATION_JSON "application/json"
 
 HTTPClient httpClient;
 JsonDocument dataRecord;
 
-#define CONTENT_TYPE_HEADER "Content-Type"
-#define APPLICATION_JSON "application/json"
+int state, lastState;
+bool change = false;
+float temperature = 0, lastTemperature = 0, lastTemperatureAuto = 0;
 
-#define STATE true
-#define EVENT_ID_READY 0
 
-#define TEMPERATURE_DEFAULT 22
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-// signings for the methods
 std::pair<bool, int> handleReadyEvent();
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("Modest IoT Thermostat Device SweetManager");
-  lcd.init();
+  Serial.println("Starting thermostat...");
+  // initializing wifi
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  // setting body json for POST
+  dataRecord["device_id"] = DEVICE_ID;
+  dataRecord["api_key"] = API_KEY;
+
+  // pines I2C personalizados
+  Wire.begin(25, 26); // SDA = GPIO25, SCL = GPIO26
+
   lcd.begin(16, 2);
   lcd.backlight();
   lcd.clear();
   lcd.print("Connected!");
 
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.println("Connecting");
-  while(WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
-    delay(500);
-  }
-  Serial.println();
-  Serial.println("Connected: ");
-  Serial.println(WiFi.localIP());
+  // switch
+  pinMode(SWITCH_GPIO, INPUT);
+  state = digitalRead(SWITCH_GPIO);
+  lastState = state;
 
-  dataRecord["device_id"] = DEVICE_ID;
-  dataRecord["api_key"] = API_KEY;
 
-  thermostat.setCurrentTemperature(TEMPERATURE_DEFAULT);
-  thermostat.setTargetTemperature(TEMPERATURE_DEFAULT + 2);
+  // leds
+  pinMode(RED_LED, OUTPUT);
+  pinMode(BLUE_LED, OUTPUT);
 
-  Event readyEvent(EVENT_ID_READY);
-  thermostat.on(readyEvent);
+  // backend
+  //lastTemperatureAuto = getTemperatureFromBackend();
+
+  Serial.println("Device initialized");
 }
 
 void loop() {
-    delay(DEBOUNCE_DELAY_MS);
+  state = digitalRead(SWITCH_GPIO);
+  if(state != lastState) {
+    change = !change;
+    lastState = state;
+  }
 
- if(WiFi.status() == WL_CONNECTED) {
-    // call the handleReadyEvent function to simulate the device being ready
-    
+
+  if(change) {
+    lcd.clear(); 
+    lcd.setCursor(0, 0);
+    if(state) {
+      lcd.print("MODE: MANUAL");
+    }else {
+      lcd.print("MODE: AUTO");
+    }
+
+    lcd.setCursor(0, 1);
+    lcd.print("Temp = ");
+    lcd.print(temperature, 1);
+    lcd.print("C");
+
+    change = !change;
+  }
+
+  // potentiometer
+  int potValue = analogRead(POTENTIOMETER_PIN);
+  temperature = map(potValue, 0, 4095, 20, 40); // 20°C a 40°C
+
+  controlLeds();
+  if(state) controlInputManual();
+  else controlInputAuto();
+  delay(2000);
+}
+
+void controlLeds() {
+  // red led (heating) is on when temperature >= 32 C° and blue led (colding) when <= 27
+  digitalWrite(RED_LED, temperature >= 32 ? HIGH : LOW);
+  digitalWrite(BLUE_LED, temperature <= 27 ? HIGH : LOW);
+}
+
+void controlInputManual() {
+  if(temperature != lastTemperature) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("MODE: MANUAL");
+
+    lcd.setCursor(0, 1);
+    lcd.print("Temp = ");
+    lcd.print(temperature);
+    lcd.print("C");
+    lastTemperature = temperature;
+    delay(2000);
+  }
+}
+
+void controlInputAuto() {
+  delay(3000);
+  if(WiFi.status() == WL_CONNECTED) {
     std::pair<bool, int> response = handleReadyEvent();
     if(!response.first) {
       lcd.clear();
@@ -91,28 +133,33 @@ void loop() {
       return;
     }
 
-    thermostat.setCurrentTemperature(response.second);
-
-    Serial.println(response.first);
-    Serial.println(response.second);
-
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("Temp = ");
-    lcd.print(thermostat.getCurrentTemperature());
-    lcd.print("C");    
-  }else {
-    Serial.println("WiFi disconnected");
-    lcd.clear();
+    lastTemperatureAuto = response.second;
   }
 
+  if(temperature != lastTemperatureAuto) {
+    temperature = lastTemperatureAuto;
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("MODE: AUTO");
+
+    lcd.setCursor(0, 1);
+    lcd.print("Temp = ");
+    lcd.print(temperature);
+    lcd.print("C");
+    delay(2000);
+  }
+}
+
+float getTemperatureFromBackend() {
+  return random(250, 400) / 10.0;
 }
 
 // function to know if the device is ready
 std::pair<bool, int> handleReadyEvent() {
   Serial.println("Getting if the device is ready...");
   httpClient.begin(ENDPOINT_POST_TEMPERATURE);
-  dataRecord["current_temperature"] = thermostat.getCurrentTemperature();
+  dataRecord["current_temperature"] = temperature;
 
   String dataRecordResource;
   serializeJson(dataRecord, dataRecordResource);

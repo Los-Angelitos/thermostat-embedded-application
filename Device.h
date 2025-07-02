@@ -23,7 +23,8 @@ class Device : public EventHandler, public CommandHandler {
 public:
     virtual void on(Event event) override = 0;
     virtual void handle(Command command) override = 0;
-    virtual ~Device() = default;
+
+    virtual ~Device() = default; ///< Virtual destructor for safe inheritance.
 };
 
 #endif // DEVICE_H

@@ -17,14 +17,14 @@
 #include "Actuator.h"
 
 Actuator::Actuator(int pin, CommandHandler* commandHandler)
-    : pin(pin), commandHandler(commandHandler) {}
+    : pin(pin), handler(commandHandler) {}
 
 void Actuator::handle(Command command) {
-    if (commandHandler != nullptr) {
-        commandHandler->handle(command);
+    if (handler != nullptr) {
+        handler->handle(command);
     }
 }
 
-void Actuator::setHandler(CommandHandler* handler) {
-    commandHandler = handler;
+void Actuator::setHandler(CommandHandler* commandHandler) {
+    handler = commandHandler;
 }

@@ -20,18 +20,18 @@
  */
 
 struct Event {
-    int id;
+  int id;
 
-    explicit Event(int eventId) : id(eventId) {}
-    bool operator==(const Event& other) const {
-        return id == other.id;
-    }
+  explicit Event(int eventId) : id(eventId) {}
+  bool operator==(const Event& other) const {
+    return id == other.id;
+  }
 };
 
 class EventHandler {
 public:
-    virtual void on(Event event) = 0;
-    virtual ~EventHandler() = default;
+  virtual void on(Event event) = 0;
+  virtual ~EventHandler() = default;
 };
 
-#endif // EVENT_HANDLER_H
+#endif

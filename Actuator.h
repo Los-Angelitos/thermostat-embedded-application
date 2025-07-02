@@ -17,12 +17,13 @@
 
 class Actuator : public CommandHandler {
 protected:
-    int pin; // GPIO pin number for the actuator
-    CommandHandler* commandHandler; // Pointer to the command handler
+    int pin; ///< GPIO pin assigned to the actuator.
+    CommandHandler* handler; ///< Optional handler to receive propagated commands.
+
 public:
     Actuator(int pin, CommandHandler* commandHandler = nullptr);
     void handle(Command command) override;
-    void setHandler(CommandHandler* handler);
+    void setHandler(CommandHandler* commandHandler);
 };
 
 #endif // ACTUATOR_H
